@@ -37,6 +37,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   // Recording (hook must be at top level, not inside LiveKitRoom sub-tree)
   const { recording, start: startRec, stop: stopRec, error: recError } = useRecording(roomName);
   const [anyoneRecording, setAnyoneRecording] = useState(false);
+  const [recElapsed, setRecElapsed] = useState(0);
 
   /**
    * Tracks whether we have ever reached a fully-connected state.
@@ -48,6 +49,14 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
    * the user straight back to /dashboard.
    */
   const everConnectedRef = useRef(false);
+
+  // ── Recording timer ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!recording && !anyoneRecording) { setRecElapsed(0); return; }
+    setRecElapsed(0);
+    const t = setInterval(() => setRecElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [recording, anyoneRecording]);
 
   // ── Token fetch ───────────────────────────────────────────────────────────
 
@@ -204,7 +213,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         <div className="flex items-center gap-2">
           {(recording || anyoneRecording) && (
             <span className="flex items-center gap-1.5 rounded-full bg-[#fc8181]/20 px-3 py-1 text-xs font-semibold text-[#fc8181]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#fc8181]" /> REC
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#fc8181]" /> REC {Math.floor(recElapsed / 60)}:{(recElapsed % 60).toString().padStart(2, '0')}
             </span>
           )}
           {recError && <span className="text-xs text-[#fc8181]">{recError}</span>}

@@ -53,7 +53,10 @@ const ChatPanel = ({
         (msg.from === member._id && msg.to === user?._id) ||
         (msg.from === user?._id && msg.to === member._id)
       ) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
       }
     };
     socket.on('dm_message', handleDm);

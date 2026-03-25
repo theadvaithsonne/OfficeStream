@@ -21,7 +21,10 @@ export function useRecording(roomName: string | undefined) {
       setRecording(true);
       socket?.emit('recording:started', { roomName });
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Failed to start recording';
+      const serverMsg = e?.response?.data?.message || e?.message || '';
+      const msg = serverMsg.includes('room does not exist')
+        ? 'Cannot record — join the room first with audio/video'
+        : serverMsg || 'Failed to start recording';
       // If already recording, treat as success
       if (e?.response?.status === 409) {
         egressIdRef.current = e.response.data.egressId;

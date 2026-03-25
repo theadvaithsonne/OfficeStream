@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
@@ -35,32 +35,45 @@ export default function DashboardPage() {
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [chatWith, setChatWith] = useState<Member | null>(null);
 
-  // Function to play a simple phone ringtone sound for incoming calls
+  // Ringtone ref so we can stop it on accept/decline
+  const ringtoneRef = useRef<{ interval: ReturnType<typeof setInterval>; ctx: AudioContext } | null>(null);
+
+  const stopRingtone = useCallback(() => {
+    if (ringtoneRef.current) {
+      clearInterval(ringtoneRef.current.interval);
+      ringtoneRef.current.ctx.close().catch(() => {});
+      ringtoneRef.current = null;
+    }
+  }, []);
+
   const playRingtone = useCallback(() => {
+    stopRingtone();
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
       const playBurst = () => {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
+        try {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
 
-        let t = audioContext.currentTime;
-        const tone = (freq: number, dur: number) => {
-          osc.frequency.setValueAtTime(freq, t);
-          gain.gain.setValueAtTime(0.3, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
-          t += dur;
-        };
+          let t = audioContext.currentTime;
+          const tone = (freq: number, dur: number) => {
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+            t += dur;
+          };
 
-        tone(800, 0.4);
-        tone(600, 0.4);
-        tone(800, 0.4);
-        tone(600, 0.4);
+          tone(800, 0.4);
+          tone(600, 0.4);
+          tone(800, 0.4);
+          tone(600, 0.4);
 
-        osc.start(audioContext.currentTime);
-        osc.stop(t);
+          osc.start(audioContext.currentTime);
+          osc.stop(t);
+        } catch {}
       };
 
       playBurst();
@@ -75,10 +88,11 @@ export default function DashboardPage() {
         playBurst();
       }, 2000);
 
+      ringtoneRef.current = { interval: ringInterval, ctx: audioContext };
     } catch (e) {
       console.error('Failed to play ringtone:', e);
     }
-  }, []);
+  }, [stopRingtone]);
 
   useEffect(() => {
     api.get('/api/offices/me')
@@ -135,16 +149,18 @@ export default function DashboardPage() {
 
   const handleAcceptCall = useCallback(() => {
     if (!incomingCall) return;
+    stopRingtone();
     socket?.emit('call_accept', { toId: incomingCall.fromId, roomId: incomingCall.roomId });
     setIncomingCall(null);
     router.push(`/room/${incomingCall.roomId}`);
-  }, [incomingCall, socket, router]);
+  }, [incomingCall, socket, router, stopRingtone]);
 
   const handleDeclineCall = useCallback(() => {
     if (!incomingCall) return;
+    stopRingtone();
     socket?.emit('call_decline', { toId: incomingCall.fromId });
     setIncomingCall(null);
-  }, [incomingCall, socket]);
+  }, [incomingCall, socket, stopRingtone]);
 
   if (hasOffice === null) return <Spinner />;
 
