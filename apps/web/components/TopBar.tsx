@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
@@ -30,6 +30,21 @@ export default function TopBar({ officeName, onMenuClick }: { officeName: string
   const router = useRouter();
   const [statusOpen, setStatusOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (statusOpen && statusRef.current && !statusRef.current.contains(e.target as Node)) {
+        setStatusOpen(false);
+      }
+      if (userMenuOpen && userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [statusOpen, userMenuOpen]);
 
   async function changeStatus(status: Status) {
     try {
@@ -70,7 +85,7 @@ export default function TopBar({ officeName, onMenuClick }: { officeName: string
         <NotificationDropdown />
 
         {/* Status picker */}
-        <div className="relative">
+        <div className="relative" ref={statusRef}>
           <button
             onClick={() => { setStatusOpen((o) => !o); setUserMenuOpen(false); }}
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-[#64748b] transition hover:bg-[#0f3460] hover:text-white"
@@ -99,7 +114,7 @@ export default function TopBar({ officeName, onMenuClick }: { officeName: string
         </div>
 
         {/* Avatar + user menu */}
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => { setUserMenuOpen((o) => !o); setStatusOpen(false); }}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1D9E75] text-sm font-semibold text-white transition hover:bg-[#25c792]"
