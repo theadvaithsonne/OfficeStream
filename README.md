@@ -22,6 +22,8 @@ You need these installed before running:
 - **[Node.js](https://nodejs.org)** v20 or higher
 - **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (must be running)
 
+> **First time?** Open the `required-to-install-first/` folder — it has a script to auto-download both installers and a step-by-step guide. See [required-to-install-first/README.md](required-to-install-first/README.md)
+
 ## Quick Start
 
 ```bash
