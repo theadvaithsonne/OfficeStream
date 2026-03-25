@@ -77,7 +77,7 @@ export async function generateInvite(req: Request, res: Response): Promise<void>
 
   const code = nanoid(INVITE_CODE_LENGTH);
   const expiresAt = new Date(Date.now() + INVITE_CODE_TTL_MS);
-  const { maxUses } = req.body as { maxUses?: number };
+  const { maxUses } = (req.body ?? {}) as { maxUses?: number };
 
   office.inviteCodes.push({ code, createdBy: office.ownerId, expiresAt, uses: 0, maxUses });
   await office.save();
