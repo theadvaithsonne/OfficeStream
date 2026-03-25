@@ -39,47 +39,42 @@ export default function DashboardPage() {
   const playRingtone = useCallback(() => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Phone ring pattern: two tones alternating
-      let startTime = audioContext.currentTime;
-      const playTone = (frequency: number, duration: number) => {
-        oscillator.frequency.setValueAtTime(frequency, startTime);
-        gainNode.gain.setValueAtTime(0.3, startTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-        startTime += duration;
+
+      const playBurst = () => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        let t = audioContext.currentTime;
+        const tone = (freq: number, dur: number) => {
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.3, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+          t += dur;
+        };
+
+        tone(800, 0.4);
+        tone(600, 0.4);
+        tone(800, 0.4);
+        tone(600, 0.4);
+
+        osc.start(audioContext.currentTime);
+        osc.stop(t);
       };
-      
-      // Ring pattern: high-low-high-low
-      playTone(800, 0.4);
-      playTone(600, 0.4);
-      playTone(800, 0.4);
-      playTone(600, 0.4);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(startTime);
-      
-      // Repeat the ring every 2 seconds for 10 seconds
+
+      playBurst();
+
       let ringCount = 0;
       const ringInterval = setInterval(() => {
+        ringCount++;
         if (ringCount >= 5) {
           clearInterval(ringInterval);
           return;
         }
-        const newStart = audioContext.currentTime;
-        playTone(800, 0.4);
-        playTone(600, 0.4);
-        playTone(800, 0.4);
-        playTone(600, 0.4);
-        oscillator.start(newStart);
-        oscillator.stop(newStart + 1.6);
-        ringCount++;
+        playBurst();
       }, 2000);
-      
+
     } catch (e) {
       console.error('Failed to play ringtone:', e);
     }
