@@ -1,0 +1,19 @@
+{
+  "name": "officestream",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "npm install --prefix apps/server && npm install --prefix apps/web && node scripts/setup.js",
+    "dev": "concurrently --names \"docker,server,web\" --prefix-colors \"yellow,cyan,magenta\" \"docker compose up\" \"npm run dev --prefix apps/server\" \"npm run dev --prefix apps/web\"",
+    "build": "concurrently \"npm run build --prefix apps/server\" \"npm run build --prefix apps/web\"",
+    "seed": "npm run seed --prefix apps/server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

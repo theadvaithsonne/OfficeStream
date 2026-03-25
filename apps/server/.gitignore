@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+.data/
+recordings/*.mp4
+recordings/*.webm

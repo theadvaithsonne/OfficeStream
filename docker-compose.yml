@@ -1,0 +1,46 @@
+###############################################################################
+# OfficeStream — Docker services for LiveKit infrastructure
+#
+# Usage:  docker compose up -d
+#
+# The Node.js server + Next.js frontend are NOT containerised — run them with
+# `npm run dev` as usual.  Only LiveKit + Egress + Redis run in Docker.
+###############################################################################
+
+services:
+  # ── Redis (required for LiveKit ↔ Egress communication) ──────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # ── LiveKit SFU server ────────────────────────────────────────────────────
+  livekit-server:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"   # WebSocket + HTTP API
+      - "7881:7881"   # RTC/TCP
+      - "50000-50060:50000-50060/udp"  # RTC/UDP (subset for dev)
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # ── LiveKit Egress (recording & streaming) ────────────────────────────────
+  livekit-egress:
+    image: livekit/egress:latest
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    volumes:
+      - ./livekit/egress.yaml:/etc/egress.yaml:ro
+      - ./apps/server/recordings:/out    # recorded files land here
+    # Egress needs extra capabilities for Chrome
+    cap_add:
+      - SYS_ADMIN
+    restart: unless-stopped
+    depends_on:
+      - livekit-server
+      - redis

@@ -1,0 +1,6 @@
+log_level: debug
+api_key: devkey
+api_secret: officestream.livekit.dev.secret.2026.key
+ws_url: ws://livekit-server:7880
+redis:
+  address: redis:6379

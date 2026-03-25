@@ -1,0 +1,26 @@
+node_modules/
+.env
+.env.local
+
+# Recordings (binary files — don't commit)
+apps/server/recordings/*.mp4
+apps/server/recordings/*.webm
+
+# Embedded MongoDB data
+apps/server/.data/
+
+# Build output
+apps/server/dist/
+apps/web/.next/
+apps/web/out/
+
+# LiveKit binary (downloaded separately, Docker handles this now)
+livekit/livekit-server.exe
+livekit/livekit.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/

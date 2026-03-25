@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --bg:          #1a1a2e;
+  --sidebar:     #16213e;
+  --card:        #0f3460;
+  --card-hover:  #1a4475;
+  --accent:      #1D9E75;
+  --accent-h:    #25c792;
+  --border:      #1e3a5f;
+  --text-1:      #ffffff;
+  --text-2:      #a0aec0;
+  --text-3:      #64748b;
+  --online:      #48bb78;
+  --away:        #f6ad55;
+  --busy:        #fc8181;
+  --offline:     #718096;
+  --danger:      #fc8181;
+  --danger-h:    #feb2b2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2d5a8e; }
+
+/* LiveKit overrides — keep video tiles on brand */
+[data-lk-theme] { --lk-bg: var(--bg); --lk-bg2: var(--card); }
