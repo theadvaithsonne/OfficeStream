@@ -71,6 +71,11 @@ export default function Sidebar({ onKnock, onChat, open, onClose }: SidebarProps
       {/* Invite code */}
       {office && <InviteCodeBar officeId={office._id} inviteCodes={office.inviteCodes} />}
 
+      {/* Quick add user */}
+      {office && <QuickAddUser officeId={office._id} onAdded={() => {
+        api.get('/api/offices/me').then(({ data }) => { setOffice(data.office); setMembers(data.office.members); }).catch(() => {});
+      }} />}
+
       {/* Member list */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {online.length > 0 && (
@@ -176,6 +181,77 @@ function InviteCodeBar({ officeId, inviteCodes }: { officeId: string; inviteCode
         >
           {loading ? 'Generating...' : 'Generate invite code'}
         </button>
+      )}
+    </div>
+  );
+}
+
+function QuickAddUser({ officeId, onAdded }: { officeId: string; onAdded(): void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMsg(null);
+    try {
+      const { data } = await api.post(`/api/offices/${officeId}/quick-add`, { name, email, password });
+      setMsg({ text: data.message, ok: true });
+      setName(''); setEmail(''); setPassword('');
+      onAdded();
+      setTimeout(() => { setMsg(null); setOpen(false); }, 1500);
+    } catch (err: any) {
+      setMsg({ text: err.response?.data?.message || 'Failed to add user', ok: false });
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="border-b border-[#1e3a5f] px-4 py-2">
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-1.5 text-xs text-[#1D9E75] hover:text-[#25c28b] transition"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Quick Add User
+        </button>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">Add User</p>
+            <button type="button" onClick={() => { setOpen(false); setMsg(null); }} className="text-[#64748b] hover:text-white">
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <input
+            type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required
+            className="w-full rounded bg-[#0a1628] px-2 py-1 text-xs text-white placeholder-[#64748b] outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          />
+          <input
+            type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required
+            className="w-full rounded bg-[#0a1628] px-2 py-1 text-xs text-white placeholder-[#64748b] outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          />
+          <input
+            type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required
+            className="w-full rounded bg-[#0a1628] px-2 py-1 text-xs text-white placeholder-[#64748b] outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          />
+          <button
+            type="submit" disabled={loading}
+            className="w-full rounded bg-[#1D9E75] px-2 py-1 text-xs font-medium text-white transition hover:bg-[#25c28b] disabled:opacity-50"
+          >
+            {loading ? 'Adding...' : 'Add'}
+          </button>
+          {msg && <p className={`text-[10px] ${msg.ok ? 'text-[#1D9E75]' : 'text-red-400'}`}>{msg.text}</p>}
+        </form>
       )}
     </div>
   );

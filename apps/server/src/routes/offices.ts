@@ -6,6 +6,7 @@ import {
   getMyOffice,
   updateMemberRole,
   addMemberByEmail,
+  quickAddUser,
 } from '../controllers/officeController';
 import { requireAuth } from '../middleware/auth';
 
@@ -18,6 +19,7 @@ router.get('/me', getMyOffice);
 router.post('/join', joinOffice);
 router.post('/:id/invite', generateInvite);
 router.post('/:id/add-member', addMemberByEmail);
+router.post('/:id/quick-add', quickAddUser);
 router.patch('/:id/members/:memberId/role', updateMemberRole);
 
 export default router;

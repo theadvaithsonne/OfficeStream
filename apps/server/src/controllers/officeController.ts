@@ -207,6 +207,51 @@ export async function addMemberByEmail(req: Request, res: Response): Promise<voi
   res.json({ message: `${target.name} added to ${office.name}` });
 }
 
+/** POST /api/offices/:id/quick-add — creates a new user and adds them to the office (admin/owner only). */
+export async function quickAddUser(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+  const callerId = req.user!.userId;
+
+  if (!name?.trim() || !email?.trim() || !password) {
+    res.status(400).json({ message: 'Name, email, and password are required' });
+    return;
+  }
+
+  const office = await Office.findById(id);
+  if (!office) { res.status(404).json({ message: 'Office not found' }); return; }
+
+  const caller = await User.findById(callerId);
+  const isAdminOrOwner = office.ownerId.toString() === callerId || caller?.role === 'admin';
+  if (!isAdminOrOwner) { res.status(403).json({ message: 'Only admins can add members' }); return; }
+
+  const existing = await User.findOne({ email: email.trim().toLowerCase() });
+  if (existing) {
+    // If user exists but not in office, add them
+    if (!office.members.map((m) => m.toString()).includes(String(existing._id))) {
+      office.members.push(existing._id as Types.ObjectId);
+      await office.save();
+      await User.findByIdAndUpdate(existing._id, { officeId: office._id, role: 'member' });
+      res.json({ message: `${existing.name} (existing user) added to ${office.name}` });
+      return;
+    }
+    res.status(400).json({ message: 'User with this email already exists and is a member' });
+    return;
+  }
+
+  const newUser = await User.create({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password,
+  });
+
+  office.members.push(newUser._id as Types.ObjectId);
+  await office.save();
+  await User.findByIdAndUpdate(newUser._id, { officeId: office._id, role: 'member' });
+
+  res.status(201).json({ message: `${newUser.name} created and added to ${office.name}`, user: { name: newUser.name, email: newUser.email } });
+}
+
 /** PATCH /api/offices/:id/members/:memberId/role — changes a member's role (owner only). */
 export async function updateMemberRole(req: Request, res: Response): Promise<void> {
   const { id, memberId } = req.params;
