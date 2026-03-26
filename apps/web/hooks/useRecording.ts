@@ -40,14 +40,13 @@ export function useRecording(roomName: string | undefined) {
     if (!recording || !egressIdRef.current) return;
     try {
       await api.post('/api/recording/stop', { egressId: egressIdRef.current });
-      setRecording(false);
-      socket?.emit('recording:stopped', { roomName });
-      egressIdRef.current = null;
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to stop recording';
       setError(msg);
-      // Still mark as stopped on client side so user isn't stuck
+    } finally {
+      // Always broadcast stop and reset state, even if API call fails
       setRecording(false);
+      socket?.emit('recording:stopped', { roomName });
       egressIdRef.current = null;
     }
   }, [recording, roomName, socket]);
