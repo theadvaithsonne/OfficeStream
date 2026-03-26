@@ -266,8 +266,8 @@ async function pollEgressCompletion(egressId: string, userId: string): Promise<v
       );
 
       if (rec) {
-        // Notify user via DM
-        const content = `Recording ready: ${rec.roomName} (${formatDuration(duration)})`;
+        // Notify user via DM with embedded recording ID for download link
+        const content = `🎬 Recording ready: ${rec.roomName} (${formatDuration(duration)}) {{recording:${rec._id}}}`;
         const msg = await Message.create({ from: userId, to: userId, content });
         const payload = { _id: msg._id, from: userId, to: userId, content: msg.content, createdAt: msg.createdAt };
         const io = getIO();
