@@ -133,7 +133,7 @@ export default function DashboardPage() {
   }, [socket, router]);
 
   const handleKnock = useCallback((member: Member) => {
-    const roomId = crypto.randomUUID();
+    const roomId = (typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
     socket?.emit('knock', { toId: member._id, roomId });
     setOutgoingKnock({ member, roomId });
     // Auto-cancel after 60 seconds
