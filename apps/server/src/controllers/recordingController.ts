@@ -100,17 +100,21 @@ export async function stopRecording(req: Request, res: Response): Promise<void> 
     try {
       await egressClient.stopEgress(egressId);
     } catch (stopErr: any) {
-      // Normalize error text for both Error objects and raw string errors.
+      // TwirpError has a .status (HTTP code). Any 4xx means the egress is
+      // already in a terminal state (ended, not found, not active, etc.).
+      // Network errors / unexpected 5xx don't have a 4xx status, so re-throw.
+      const httpStatus: number = stopErr?.status ?? 0;
       const stopErrMsg = (typeof stopErr === 'string'
         ? stopErr
         : stopErr?.message ?? String(stopErr)) || '';
-      const normalized = stopErrMsg.toLowerCase();
-
-      // If egress already aborted/finished on its own, continue with cleanup
-      const alreadyDone = normalized.includes('cannot be stopped') ||
-                          normalized.includes('not found');
+      const alreadyDone = (httpStatus >= 400 && httpStatus < 500) ||
+        stopErrMsg.toLowerCase().includes('cannot be stopped') ||
+        stopErrMsg.toLowerCase().includes('not found') ||
+        stopErrMsg.toLowerCase().includes('not active') ||
+        stopErrMsg.toLowerCase().includes('has ended') ||
+        stopErrMsg.toLowerCase().includes('does not exist');
       if (!alreadyDone) throw stopErr;
-      console.log(`[Recording] Egress ${egressId} already ended: ${stopErrMsg}`);
+      console.log(`[Recording] Egress ${egressId} already in terminal state (${httpStatus}): ${stopErrMsg}`);
     }
 
     const rec = await Recording.findOne({ egressId });
