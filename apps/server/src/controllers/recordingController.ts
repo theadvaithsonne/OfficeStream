@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { EncodedFileOutput, EncodedFileType, EgressStatus } from 'livekit-server-sdk';
+import { EncodedFileOutput, EncodedFileType, EgressStatus, EncodingOptionsPreset } from 'livekit-server-sdk';
 import { Recording } from '../models/Recording';
 import { Office } from '../models/Office';
 import { Message } from '../models/Message';
@@ -55,7 +55,13 @@ export async function startRecording(req: Request, res: Response): Promise<void>
       disableManifest: true,
     });
 
-    const egress = await egressClient.startRoomCompositeEgress(roomName, output);
+    // speaker-dark: screen share / active speaker fills the frame, participant
+    // camera thumbnails shown in a strip — same layout as Microsoft Teams recordings.
+    // H264_1080P_30: full HD at 30fps, captures screen text clearly.
+    const egress = await egressClient.startRoomCompositeEgress(roomName, output, {
+      layout: 'speaker-dark',
+      encodingOptions: EncodingOptionsPreset.H264_1080P_30,
+    });
 
     // Persist recording metadata immediately
     const rec = await Recording.create({
