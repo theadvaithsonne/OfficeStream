@@ -100,11 +100,17 @@ export async function stopRecording(req: Request, res: Response): Promise<void> 
     try {
       await egressClient.stopEgress(egressId);
     } catch (stopErr: any) {
+      // Normalize error text for both Error objects and raw string errors.
+      const stopErrMsg = (typeof stopErr === 'string'
+        ? stopErr
+        : stopErr?.message ?? String(stopErr)) || '';
+      const normalized = stopErrMsg.toLowerCase();
+
       // If egress already aborted/finished on its own, continue with cleanup
-      const alreadyDone = stopErr.message?.toLowerCase().includes('cannot be stopped') ||
-                          stopErr.message?.toLowerCase().includes('not found');
+      const alreadyDone = normalized.includes('cannot be stopped') ||
+                          normalized.includes('not found');
       if (!alreadyDone) throw stopErr;
-      console.log(`[Recording] Egress ${egressId} already ended: ${stopErr.message}`);
+      console.log(`[Recording] Egress ${egressId} already ended: ${stopErrMsg}`);
     }
 
     const rec = await Recording.findOne({ egressId });
