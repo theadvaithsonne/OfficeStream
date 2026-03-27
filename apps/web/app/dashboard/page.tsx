@@ -183,6 +183,7 @@ export default function DashboardPage() {
           onChat={(member) => setChatWith({ ...member })}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          activeChatId={chatWith?._id}
         />
 
         {/* Chat panel as main content */}

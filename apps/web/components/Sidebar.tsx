@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { api } from '@/lib/api';
@@ -22,13 +22,55 @@ interface SidebarProps {
   onChat(member: Member): void;
   open: boolean;
   onClose(): void;
+  activeChatId?: string;
 }
 
-export default function Sidebar({ onKnock, onChat, open, onClose }: SidebarProps) {
+function playMessageSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+    osc.onended = () => ctx.close();
+  } catch {}
+}
+
+export default function Sidebar({ onKnock, onChat, open, onClose, activeChatId }: SidebarProps) {
   const { user } = useAuth();
   const { socket } = useSocket();
   const [office, setOffice] = useState<Office | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const activeChatIdRef = useRef(activeChatId);
+
+  useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
+
+  // Fetch initial unread counts
+  useEffect(() => {
+    api.get('/api/messages/unread')
+      .then(({ data }) => setUnreadCounts(data.unread))
+      .catch(() => {});
+  }, []);
+
+  // Clear unread when active chat changes
+  useEffect(() => {
+    if (activeChatId) {
+      setUnreadCounts(prev => {
+        if (!prev[activeChatId]) return prev;
+        const next = { ...prev };
+        delete next[activeChatId];
+        return next;
+      });
+    }
+  }, [activeChatId]);
 
   useEffect(() => {
     api.get('/api/offices/me')
@@ -43,6 +85,29 @@ export default function Sidebar({ onKnock, onChat, open, onClose }: SidebarProps
     });
     return () => { socket.off('presence'); };
   }, [socket]);
+
+  // Listen for incoming DMs — show badge + play sound if not currently in that chat
+  useEffect(() => {
+    if (!socket || !user) return;
+    const handleDm = (msg: { from: string; to: string }) => {
+      if (msg.to !== user._id) return;
+      if (msg.from === activeChatIdRef.current) return;
+      setUnreadCounts(prev => ({ ...prev, [msg.from]: (prev[msg.from] ?? 0) + 1 }));
+      playMessageSound();
+    };
+    socket.on('dm_message', handleDm);
+    return () => { socket.off('dm_message', handleDm); };
+  }, [socket, user]);
+
+  const handleChat = useCallback((member: Member) => {
+    setUnreadCounts(prev => {
+      if (!prev[member._id]) return prev;
+      const next = { ...prev };
+      delete next[member._id];
+      return next;
+    });
+    onChat(member);
+  }, [onChat]);
 
   const online  = members.filter((m) => m.status !== 'offline');
   const offline = members.filter((m) => m.status === 'offline');
@@ -83,7 +148,16 @@ export default function Sidebar({ onKnock, onChat, open, onClose }: SidebarProps
             <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">
               Online — {online.length}
             </p>
-            {online.map((m) => <MemberRow key={m._id} member={m} isMe={m._id === user?._id} onKnock={onKnock} onChat={onChat} />)}
+            {online.map((m) => (
+              <MemberRow
+                key={m._id}
+                member={m}
+                isMe={m._id === user?._id}
+                onKnock={onKnock}
+                onChat={handleChat}
+                unreadCount={unreadCounts[m._id] ?? 0}
+              />
+            ))}
           </section>
         )}
         {offline.length > 0 && (
@@ -91,7 +165,16 @@ export default function Sidebar({ onKnock, onChat, open, onClose }: SidebarProps
             <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">
               Offline — {offline.length}
             </p>
-            {offline.map((m) => <MemberRow key={m._id} member={m} isMe={m._id === user?._id} onKnock={onKnock} onChat={onChat} />)}
+            {offline.map((m) => (
+              <MemberRow
+                key={m._id}
+                member={m}
+                isMe={m._id === user?._id}
+                onKnock={onKnock}
+                onChat={handleChat}
+                unreadCount={unreadCounts[m._id] ?? 0}
+              />
+            ))}
           </section>
         )}
         {!office && (
@@ -257,10 +340,11 @@ function QuickAddUser({ officeId, onAdded }: { officeId: string; onAdded(): void
   );
 }
 
-function MemberRow({ member, isMe, onKnock, onChat }: {
+function MemberRow({ member, isMe, onKnock, onChat, unreadCount }: {
   member: Member; isMe: boolean;
   onKnock(m: Member): void;
   onChat(m: Member): void;
+  unreadCount: number;
 }) {
   const [hover, setHover] = useState(false);
   return (
@@ -282,6 +366,11 @@ function MemberRow({ member, isMe, onKnock, onChat }: {
         </p>
         {member.role === 'owner' && <p className="text-[10px] text-[#1D9E75]">Owner</p>}
       </div>
+      {!isMe && unreadCount > 0 && !hover && (
+        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#6264a7] px-1 text-[10px] font-bold text-white">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
       {!isMe && hover && (
         <div className="flex gap-1">
           {/* Call button — only when online */}
