@@ -96,23 +96,27 @@ export async function stopRecording(req: Request, res: Response): Promise<void> 
 
   try {
     const egressClient = getEgressClient();
-    await egressClient.stopEgress(egressId);
 
-    // Mark as processing — the egress needs time to finalize the file
-    const rec = await Recording.findOneAndUpdate(
-      { egressId },
-      { status: 'processing' },
-      { new: true },
-    );
+    try {
+      await egressClient.stopEgress(egressId);
+    } catch (stopErr: any) {
+      // If egress already aborted/finished on its own, continue with cleanup
+      const alreadyDone = stopErr.message?.toLowerCase().includes('cannot be stopped') ||
+                          stopErr.message?.toLowerCase().includes('not found');
+      if (!alreadyDone) throw stopErr;
+      console.log(`[Recording] Egress ${egressId} already ended: ${stopErr.message}`);
+    }
 
+    const rec = await Recording.findOne({ egressId });
     if (!rec) {
       res.status(404).json({ message: 'Recording not found' });
       return;
     }
 
-    console.log(`[Recording] Stopped egress ${egressId}, now processing`);
+    await Recording.findOneAndUpdate({ egressId }, { status: 'processing' });
 
-    // Poll egress until file is ready (runs in background)
+    console.log(`[Recording] Stopping egress ${egressId}, polling for completion`);
+
     pollEgressCompletion(egressId, userId).catch((err) =>
       console.error(`[Recording] Poll error for ${egressId}:`, err.message),
     );
