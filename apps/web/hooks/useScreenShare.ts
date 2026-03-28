@@ -9,7 +9,7 @@ export function useScreenShare(localParticipant: LocalParticipant | undefined) {
   const startShare = useCallback(async () => {
     if (!localParticipant) return;
     await localParticipant.setScreenShareEnabled(true, {
-      resolution: { width: 1920, height: 1080, framerate: 30 },
+      resolution: { width: 1920, height: 1080, frameRate: 30 },
       contentHint: 'detail',
     });
     setSharing(true);
