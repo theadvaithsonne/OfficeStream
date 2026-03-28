@@ -8,11 +8,11 @@ export function useScreenShare(localParticipant: LocalParticipant | undefined) {
 
   const startShare = useCallback(async (audio = false) => {
     if (!localParticipant) return;
-    await localParticipant.setScreenShareEnabled(true, {
-      resolution: { width: 1920, height: 1080, frameRate: 30 },
-      contentHint: 'detail',
-      audio,
-    });
+    await localParticipant.setScreenShareEnabled(
+      true,
+      { resolution: { width: 1280, height: 720, frameRate: 15 }, contentHint: 'detail', audio },
+      { simulcast: false, videoEncoding: { maxBitrate: 2_500_000, maxFramerate: 15 } },
+    );
     setSharing(true);
   }, [localParticipant]);
 
