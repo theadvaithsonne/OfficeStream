@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { useScreenShare } from '@/hooks/useScreenShare';
 
@@ -17,7 +17,18 @@ export default function ControlBar({
   onLeave, isHost, recording, onRecordStart, onRecordStop,
 }: ControlBarProps) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
-  const { sharing, toggle: toggleScreen } = useScreenShare(localParticipant);
+  const { sharing, startShare, stopShare } = useScreenShare(localParticipant);
+  const [showAudioPrompt, setShowAudioPrompt] = useState(false);
+
+  const handleScreenClick = useCallback(async () => {
+    if (sharing) { await stopShare(); return; }
+    setShowAudioPrompt(true);
+  }, [sharing, stopShare]);
+
+  const handleStartShare = useCallback(async (audio: boolean) => {
+    setShowAudioPrompt(false);
+    await startShare(audio);
+  }, [startShare]);
 
   const toggleMic = useCallback(async () => {
     await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
@@ -50,14 +61,35 @@ export default function ControlBar({
       />
 
       {/* Screen share */}
-      <CtrlBtn
-        active={!sharing}
-        onClick={toggleScreen}
-        activeIcon={<ScreenIcon />}
-        inactiveIcon={<ScreenIcon />}
-        label={sharing ? 'Stop sharing' : 'Share screen'}
-        highlight={sharing}
-      />
+      <div className="relative">
+        {showAudioPrompt && (
+          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-44 rounded-lg bg-[#1e3a5f] border border-[#2d5a8e] p-3 shadow-xl z-50">
+            <p className="text-xs text-[#d4d4d4] mb-2 text-center">Share audio?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleStartShare(true)}
+                className="flex-1 rounded-md bg-[#6264a7] py-1.5 text-xs text-white hover:bg-[#7b83c7] transition"
+              >Yes</button>
+              <button
+                onClick={() => handleStartShare(false)}
+                className="flex-1 rounded-md bg-[#2d5a8e] py-1.5 text-xs text-white hover:bg-[#3a6fa8] transition"
+              >No</button>
+            </div>
+            <button
+              onClick={() => setShowAudioPrompt(false)}
+              className="absolute top-1 right-2 text-[#9d9d9d] hover:text-white text-xs"
+            >✕</button>
+          </div>
+        )}
+        <CtrlBtn
+          active={!sharing}
+          onClick={handleScreenClick}
+          activeIcon={<ScreenIcon />}
+          inactiveIcon={<ScreenIcon />}
+          label={sharing ? 'Stop sharing' : 'Share screen'}
+          highlight={sharing}
+        />
+      </div>
 
       {/* Record */}
       {onRecordStart && onRecordStop && (

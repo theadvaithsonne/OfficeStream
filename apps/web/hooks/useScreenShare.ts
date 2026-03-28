@@ -6,11 +6,12 @@ import type { LocalParticipant } from 'livekit-client';
 export function useScreenShare(localParticipant: LocalParticipant | undefined) {
   const [sharing, setSharing] = useState(false);
 
-  const startShare = useCallback(async () => {
+  const startShare = useCallback(async (audio = false) => {
     if (!localParticipant) return;
     await localParticipant.setScreenShareEnabled(true, {
       resolution: { width: 1920, height: 1080, frameRate: 30 },
       contentHint: 'detail',
+      audio,
     });
     setSharing(true);
   }, [localParticipant]);
